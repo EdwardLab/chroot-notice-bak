@@ -1,0 +1,403 @@
+Kali Linux Forums - Powered by vBulletin  
+
+SSH Bash: Required key not available
+
+Thread: SSH Bash: Required key not available
+
+If this is your first visit, be sure to check out the FAQ by clicking the link above. You may have to register before you can post: click the register link above to proceed. To start viewing messages, select the forum that you want to visit from the selection below.
+
+Tags: bash, required key, ssh
+
+drunkenllama said:
+
+2020-04-11
+
+Unhappy SSH Bash: Required key not available
+
+Hi guys,
+
+When I connect to my Nethunter through SSH from my laptop, (tried both root and kali as user). It seems the SSH bash environment is limited.
+
+with most commands I type in, the SSH terminal returns:
+
+-Bash: /usr/bin/TheCommandIJustTyped Required key not available
+
+I looked everywhere online, not much help available. Can anyone help? Am I the only one with this problem?
+
+Is it to do with the Magisk Rooting process or the SSH Key generation from the server?
+
+Thanks in advance.
+
+ 
+
+blueorchid said:
+
+2020-05-11
+
+Hello,
+
+I have the same issue.
+
+Xiaomi Mi 9T - MIUI 11 - Android Ten - nethunter 2020.2
+
+```
+
+blue@John:~$ ssh root@192.168.1.10
+
+root@192.168.1.10's password:
+
+-bash: /etc/profile: Required key not available
+
+-bash: /root/.bash_profile: Required key not available
+
+-bash-5.0# id
+
+uid=0(root) gid=0(root) groups=0(root),27(sudo),3003(sockets),3004(inet)
+
+-bash-5.0# pwd
+
+/root
+
+-bash-5.0# ls
+
+-bash: /usr/bin/ls: Required key not available
+
+```
+
+This seems to be the issue of the chroot and ssh's pam.
+
+I once used the Chromebook with Crouton Linux Chroot. When drop into chroot shell, the Downloads folder of Chromebook cannot be written to: same error: "Required key not available".
+
+They have a solution of comment out a line in /etc/pam.d/su-l
+
+```
+
+# session optional pam_keyinit.so force revoke
+
+```
+
+Though this solution hasn't been working for me.
+
+ 
+
+blueorchid said:
+
+2020-05-11
+
+While waiting for someone with a fix, I have a work around of ssh into android shell and chroot into kali.
+
+Install openssh via termux
+
+```
+
+apt install openssh
+
+sshd
+
+```
+
+SSH into android user at port 8022. Set up ssh key if wanted.
+
+```
+
+ssh u0_a205@192.168.1.10 -p8022
+
+su root
+
+bootkali
+
+```
+
+Not very secure and conveniently. Though it works.
+
+ 
+
+drunkenllama said:
+
+2020-05-18
+
+Quote Originally Posted by blueorchid View Post
+
+While waiting for someone with a fix, I have a work around of ssh into android shell and chroot into kali.
+
+Install openssh via termux
+
+```
+
+apt install openssh
+
+sshd
+
+```
+
+SSH into android user at port 8022. Set up ssh key if wanted.
+
+```
+
+ssh u0_a205@192.168.1.10 -p8022
+
+su root
+
+bootkali
+
+```
+
+Not very secure and conveniently. Though it works.
+
+Hi blueorchid, thanks for the suggestions! I've tried both your methods, the first one didn't really have any effect, the 2nd one, I think only works if you've installed NH from Termux. I installed NH chroot manager and magisk, Termux doesn't seem to be able to reach the Kali installation even as root.
+
+ 
+
+drunkenllama said:
+
+2020-05-20
+
+Found a solution:
+
+editing the /edc/pam.d/ AND /etc/pam.d/su- files to comment out this line:
+
+# session optional pam_keyinit.so force revoke
+
+It worked for me, but no idea why. Maybe someone can illuminate us :-)
+
+ 
+
+blueorchid said:
+
+2020-05-23
+
+Yeah the fix works for me too. I commented out the line "session optional pam_keyinit.so force revoke" in all the files under "/etc/pam.d/":
+
+/etc/pam.d/su-l
+
+/etc/pam.d/login
+
+/etc/pam.d/runuser-l
+
+/etc/pam.d/ssh
+
+ 
+
+re4son said:
+
+2020-05-24
+
+That error is caused by an encrypted data partition. Magisk cannot handle user context changes on encrypted data partitions.
+
+Please flash an encryption disabler for your phone and format data.
+
+Reboot and verify in "settings" that your phone is not encrypted.
+
+ 
+
+chavetasoft said:
+
+2020-06-14
+
+I?m resolve this in the /etc/pam.d/sshd file whit this config (sorry mi inglish is not very good im uruguayian)
+
+################################################## ##################
+
+# PAM configuration for the Secure Shell service
+
+# Standard Un*x authentication.
+
+@include common-auth
+
+#0 Disallow non-root logins when /etc/nologin exists.
+
+#account required pam_nologin.so
+
+# Uncomment and edit /etc/security/access.conf if you need to set complex
+
+# access limits that are hard to express in sshd_config.
+
+# account required pam_access.so
+
+# Standard Un*x authorization.
+
+@include common-account
+
+# SELinux needs to be the first session rule. This ensures that any
+
+# lingering context has been cleared. Without this it is possible that a
+
+# module could execute code in the wrong domain.
+
+session [success=ok ignore=ignore module_unknown=ignore default=bad] pam_selinux.so close
+
+# Set the loginuid process attribute.
+
+#session required pam_loginuid.so
+
+# Create a new session keyring.
+
+#session required pam_keyinit.so force revoke
+
+# Standard Un*x session setup and teardown.
+
+@include common-session
+
+# Print the message of the day upon successful login.
+
+# This includes a dynamically generated part from /run/motd.dynamic
+
+# and a static (admin-editable) part from /etc/motd.
+
+session optional pam_motd.so motd=/run/motd.dynamic
+
+session optional pam_motd.so noupdate
+
+# Print the status of the user's mailbox upon successful login.
+
+session optional pam_mail.so standard noenv # [1]
+
+# Set up user limits from /etc/security/limits.conf.
+
+#session required pam_limits.so
+
+# Read environment variables from /etc/environment and
+
+# /etc/security/pam_env.conf.
+
+session required pam_env.so # [1]
+
+# In Debian 4.0 (etch), locale-related environment variables were moved to
+
+# /etc/default/locale, so read that as well.
+
+session required pam_env.so user_readenv=1 envfile=/etc/default/locale
+
+# SELinux needs to intervene at login time to ensure that the process starts
+
+# in the proper default security context. Only sessions which are intended
+
+# to run in the user's context should be run after this.
+
+session [success=ok ignore=ignore module_unknown=ignore default=bad] pam_selinux.so open
+
+# Standard Un*x password updating.
+
+@include common-password
+
+ 
+
+RSE said:
+
+2021-01-03
+
+How do i even connect to my nethunter phone through ssh.
+
+When i try to connect it asks me for a password.
+
+I tried root:toor but nothing works.
+
+ 
+
+berbascum said:
+
+2021-04-18
+
+Hi all,
+
+I've had same problem on a Xiaomi with LineageOS 17.1, in a LinuxDeploy Debian Buster chroot
+
+As re4son said, the problem starts once i encrypted Android data partition.
+
+Thanks to your comments, I've been able to solve the problem commenting the line:
+
+#session optional pam_keyinit.so force revoke
+
+in /etc/pam.d/sshd and /etc.pam.d/su-l files.
+
+After restart chroot environment, write operations from chroot to Android encrypted data partition is working.
+
+Thanks to all.
+
+ 
+
+lyh543 said:
+
+2022-05-02
+
+Same Problem on Android 12, tome-linux(https://github.com/2moe/tmoe-linux) chroot to Archlinux ARM.
+
+Code: [View]
+
+#session optional pam_keyinit.so force
+
+Code: [View]
+
+revoke
+
+comment this line finally works for me, but this line doesn't exist directly in `/etc/pam.d/sshd` in Archlinux ARM.
+
+Code: [View]
+
+[liu@Mi-MIX-2S ~]$ cat /etc/pam.d/sshd
+
+#%PAM-1.0
+
+#auth     required  pam_securetty.so     #disable remote root
+
+auth      include   system-remote-login
+
+account   include   system-remote-login
+
+password  include   system-remote-login
+
+session   include   system-remote-login
+
+[liu@Mi-MIX-2S ~]$ cat /etc/pam.d/system-remote-login
+
+#%PAM-1.0
+
+auth      include   system-login
+
+account   include   system-login
+
+password  include   system-login
+
+session   include   system-login
+
+[liu@Mi-MIX-2S ~]$ cat /etc/pam.d/system-login
+
+#%PAM-1.0
+
+auth       required   pam_shells.so
+
+auth       requisite  pam_nologin.so
+
+auth       include    system-auth
+
+account    required   pam_access.so
+
+account    required   pam_nologin.so
+
+account    include    system-auth
+
+password   include    system-auth
+
+session    optional   pam_loginuid.so
+
+# COMMENT IT!
+
+# session    optional   pam_keyinit.so       force revoke
+
+session    include    system-auth
+
+session    optional   pam_motd.so
+
+session    optional   pam_mail.so          dir=/var/spool/mail standard quiet
+
+-session   optional   pam_systemd.so
+
+session    required   pam_env.so           user_readenv=1
+
+So be careful to find thie line.
+
+ 
+
+Log in Register Full Site Top
+
+Kali Linux

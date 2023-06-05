@@ -1,0 +1,25 @@
+
+Linux命令
+5 篇文章0 订阅
+订阅专栏
+在Android里chroot的Linux系统中使用sudo提示如下：
+
+ sudo 必须属于用户 ID 0(的用户)并且设置 setuid 位
+1
+解决方法：
+1、使用 suid 选项重新挂载 /data
+
+busybox mount -o remount,suid /data
+1
+2、把整个 rootfs 放到一个 img 文件里，然后挂载
+3、直接使用 root 用户，有需要时使用 sudo 降低权限
+
+问题原由：
+
+昨天通过Linux deploy软件在/data/debian路径下安装了个Debian，然后我是直接通过终端模拟器以root身份chroot使用这个Linux，但在远程连接的时候发现连接root用户一直提示我密码错误，可我实际上已经在root权限下设置了passwd，随后我adduser加入了一个新用户来提供远程，当我再次远程连接的时候，发现可以登录并使用这个用户，但随后问题来了，我需要提权来安装某个依赖，但输入sudo告诉我 sudo 必须属于用户 ID 0(的用户)并且设置 setuid 位，在网上搜索到的内容均是重新以root身份赋予sudo 4755、u+s、root组这种千篇一律的低质量文章，后来换了关键词(chroot linux sudo )才得到 解决方案。
+
+stackoverflow论坛原文回答
+https://stackoverflow.com/questions/36451444/what-can-cause-a-socket-permission-denied-error#answers
+————————————————
+版权声明：本文为CSDN博主「sorry_my_life」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/sorry_my_life/article/details/112692354
